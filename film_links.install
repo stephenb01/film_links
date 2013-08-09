@@ -1,0 +1,171 @@
+<?php
+/**
+ * @file
+ * Install, update and uninstall functions for the user status module.
+ */
+
+/**
+ * Implements hook_install().
+ * 
+ * Add records to the created tables
+ *
+ */
+function film_links_install() {
+/*
+  // Adding several entries for the status
+  // Add a default entry.
+  $fields = array(
+    'name'    => 'in office',
+  );
+  
+  db_insert('user_status')
+    ->fields($fields)
+    ->execute();
+
+  // Add another entry.
+  $fields = array(
+    'name'    => 'in meeting',
+  );
+  
+  db_insert('user_status')
+    ->fields($fields)
+    ->execute();
+  
+  $fields = array(
+    'name'    => 'busy',
+  );
+  
+  db_insert('user_status')
+    ->fields($fields)
+    ->execute();
+*/
+}
+
+/**
+ * Implements hook_uninstall().
+ * 
+ * @see hook_uninstall()
+ * 
+ */
+function film_links_uninstall() {
+  // nothing.
+}
+
+
+/**
+ * Implements hook_schema().
+ *
+ * Defines the database tables used by this module.
+ *
+ * @see hook_schema()
+ */
+function film_links_schema() {
+  $schema['film_link'] = array (
+    'description' => 'Store the relationship between the file, person and character',
+    'fields' => array(
+      'lid' => array(
+        'description' => 'The primary identifier for a link.',
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'fid' => array(
+          'description' => 'Film ID',
+          'type' => 'int',
+          'unsigned' => TRUE,
+          'not null' => TRUE,
+      ),
+      'pid' => array(
+          'description' => 'Person ID',   
+          'type' => 'int',
+          'unsigned' => TRUE,
+          'not null' => TRUE,
+      ),	  
+      'rid' => array(
+          'description' => 'Role ID',          
+          'type' => 'int',
+          'unsigned' => TRUE,
+          'not null' => TRUE,
+      ),
+      'srid' => array(
+          'description' => 'Sub role ID',          
+          'type' => 'int',
+          'unsigned' => TRUE,
+          'not null' => FALSE,
+      ),
+      'cid' => array(
+          'description' => 'Character ID',          
+          'type' => 'int',
+          'unsigned' => TRUE,
+          'not null' => FALSE,
+      ), 
+      'film_character' => array(
+          'description' => 'Character name',          
+          'type' => 'varchar',
+          'length' => 255,
+          'not null' => FALSE,
+          'default' => '',
+      ),         
+      'vid' => array(
+          'description' => 'version id',          
+          'type' => 'int',
+          'unsigned' => TRUE,
+          'not null' => FALSE,
+      ),	  	  
+    ),
+      'primary key' => array('lid'),
+      'indexes' => array(
+        'film_links_idx_film'   => array('fid'),
+        'film_links_idx_person' => array('pid'),
+        'film_links_idx_role' => array('rid'),
+        'film_links_idx_character' => array('cid'),
+        'film_links_idx_version' => array('vid'),
+    ),	  
+  );  
+ 
+   $schema['film_link_role'] = array (
+    'description' => 'Store the relationship between the file, person and character',
+    'fields' => array(
+      'rid' => array(
+          'description' => 'Role ID',
+          'type' => 'serial',
+          'unsigned' => TRUE,
+          'not null' => FALSE,
+      ),
+      'pid' => array(
+          'description' => 'Parent role ID',   
+          'type' => 'int',
+          'unsigned' => TRUE,
+          'not null' => FALSE,
+      ),	  
+      'name' => array(
+          'description' => 'Role name',          
+          'type' => 'varchar',
+          'length' => 255,
+          'not null' => TRUE,
+          'default' => '',
+      ),
+      'film_character' => array(
+          'description' => 'If true then the name of the character can be entered.',          
+          'type' => 'int',
+          'unsigned' => TRUE,
+          'not null' => TRUE,
+          'default' => 0,
+      ),
+      'deleted' => array(
+          'description' => 'Deleted',          
+          'type' => 'int',
+          'unsigned' => TRUE,
+          'not null' => TRUE,
+          'default' => 0,
+      ), 	  
+    ),
+      'indexes' => array(
+        'film_links_role_idx_role'   => array('rid'),
+        'film_links_role_idx_parent' => array('pid'),
+    ),	  
+  );
+
+  return $schema;
+
+}
