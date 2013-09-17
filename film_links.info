@@ -1,3 +1,4 @@
 name = Film links
 description = Stephen Blinkhorne - Provides links between films people and characters
+package = Film
 core = 7.x

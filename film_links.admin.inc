@@ -126,17 +126,18 @@ function _film_links_get_roles_table() {
   $header = array(
     array('data' => t('Role'), 'field' => 'role'),
     array('data' => t('Character'), 'field' => 'character'),
-    array('data' => ' ','field'=>'edit'),
-    array('data' => ' ','field'=>'delete'),
+    array('data' => 'Main item ','field'=>'operations2'),  
+    array('data' => 'group items','field'=>'operations3'),        
+    array('data' => ' ','field'=>'operations'),
   );
-
+$destination = drupal_get_destination();
+dpm($destination);
   $result = _film_links_get_roles(NULL);
 
   $rows = array();
   foreach($result as $row) {
-
-    $rows_array = array();
-
+    $operation = array();
+    
     if ($row->film_character == 1) {
       $character = '<img src="/'.drupal_get_path('module','film_links'). '/image/tick.png" style="width:15px; height:15px;">';
       
@@ -144,12 +145,50 @@ function _film_links_get_roles_table() {
       $character = '';
     }
 
-    $rows_array['name'] = l($row->name,'admin/config/film_links/settings/subroles/' . $row->rid);
-    $rows_array['character'] = $character;
-    $rows_array['edit'] = l('Edit','admin/config/film_links/settings/roles/edit/' . $row->rid);
-    $rows_array['delete'] = l('Delete','admin/config/film_links/settings/roles/delete/' . $row->rid);
-
-    $rows[] = $rows_array;
+    // Get number of sub roles
+//    $sub_role_count = _film_links_get_subrole_count($row->rid);
+    
+//    if ($sub_role_count > 0) {
+//      $sub_role_count = ' (' . $sub_role_count . ')';
+//    } else {
+//      $sub_role_count = ' (-)';
+//    }
+    $rows[$row->rid]['name'] = l($row->name,'admin/config/film_links/settings/subroles/' . $row->rid);
+    $rows[$row->rid]['character'] = $character;
+    
+    $rows[$row->rid]['operation2'] = array(
+      'data' => array(
+          '#type' => 'radio',
+          '#default_value' => $row->rid,
+          '#attributes' => array('name' => 'test'),
+      ),
+    );
+    
+    
+    $rows[$row->rid]['operation3'] = array(
+      'data' => array(
+          '#type' => 'checkbox',
+          '#default_value' => $row->rid,
+      ),
+    );    
+    
+    
+    $operation['edit'] = array(
+      'title' => t('edit'),
+        'href' => 'admin/config/film_links/settings/roles/edit/' . $row->rid,
+    );
+    
+    $operation['delete'] = array(
+      'title' => t('delete'),
+        'href' => 'admin/config/film_links/settings/roles/delete/' . $row->rid,
+    );    
+     $rows[$row->rid]['delete'] = array(
+       'data' => array(
+         '#theme' => 'links__node_operations',
+           '#links' => $operation,
+           '#attributes' => array('class' => array('links','inline')),
+       ),  
+     );
   }
   
   // Create a render array ($build) which will be themed as a table with a
@@ -203,29 +242,7 @@ function film_links_setting_form($form, &$form_state) {
 }
 
 
-/*
- * We save the item to the database
- */
-function _film_links_role_save($role_name,$role_parent_id = NULL,$character = 0) {
-  //
-  $query = db_insert('film_link_role');
-  $query->fields(
-    array (
-      'pid' => $role_parent_id,
-      'name' => $role_name,
-      'deleted' => 0,
-      'film_character' => $character,
-    )
-  );
-  try {
-    $query->execute();
-  } catch (Exception $e) {
-    drupal_set_message(t('An error occurred inserting a role item. Check the log files for more information'),'error');
-    watchdog('film_links','Error inserting item : ' . $e,NULL,WATCHDOG_ERROR);      
-    return FALSE;
-  }
-  return TRUE;      
-}
+
 
 /*
  * Update the current role item
@@ -409,7 +426,7 @@ function film_links_role_add_validate($form, &$form_state) {
 function film_links_role_add_submit($form,&$form_state) {
   $role_name = $form_state['values']['field_role_name'];
   $character = $form_state['values']['field_character'];
-  _film_links_role_save($role_name,NULL,$character);
+  film_links_role_save($role_name,NULL,$character);
 }
 
 /*
@@ -562,7 +579,7 @@ function film_links_sub_roles($form, $form_state, $role_id = NULL) {
     '#suffix' => '</h1>',      
   );
 
-  $form['title'] = array(
+  $form['go_back'] = array(
     '#markup' => l('Go back to roles',  'admin/config/film_links/settings/roles'),    
     '#prefix' => '<p>',
     '#suffix' => '</p>', 
@@ -614,7 +631,7 @@ function film_links_sub_roles_validate($form, &$form_state) {
 function film_links_sub_roles_submit($form,&$form_state) {
   $role_name = $form_state['values']['field_role_name'];
   $parent_id = $form_state['values']['rid'];
-  _film_links_role_save($role_name,$parent_id);
+  film_links_role_save($role_name,$parent_id);
 }
 
 function _film_links_get_sub_roles_table($rid = NULL) {
@@ -704,7 +721,7 @@ function film_links_sub_role_edit_validate($form, &$form_state) {
 
 
 function film_links_sub_role_edit_submit($form, &$form_state) {
-  dpm($form_state);
+ // dpm($form_state);
   $role_id = $form_state['values']['rid'];
   $parent_id = $form_state['values']['pid'];
   $name = $form_state['values']['field_role_name'];
@@ -766,3 +783,17 @@ function film_links_sub_role_delete_submit($form, &$form_state) {
   }
   $form_state['redirect'] = 'admin/config/film_links/settings/subroles/' . $parent_id;
 }
+
+/*
+ * Get the number of sub roles for the specified role.
+ *
+ * $rid - The id of the parent role.
+ */
+//function _film_links_get_subrole_count($rid) {
+//// Got the following code from : https://drupal.org/node/1251174
+//  $query = db_select('film_link_role','r');
+//  $query->condition('r.pid',$rid,'=');
+//  $number_of_rows = $query->countQuery()->execute()->fetchField();
+//
+//  return $number_of_rows;
+//}

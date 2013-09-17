@@ -115,6 +115,7 @@ function film_links_menu() {
   
   $items['film-link/delete/%'] = array(
     'page callback' => '_film_link_role_delete',
+    'page arguments' =>  array(2),
     'access callback' => true , //array('access example autocomplete'),
     'file' => 'film_links.delete.inc',    
     'type' => MENU_NORMAL_ITEM
@@ -129,10 +130,29 @@ function film_links_menu() {
   return $items;
 }
 
+/**
+ * Implements hook_permission().
+ *
+ * We want to let site administrators figure out who should
+ * be able to view, edit, and administer our field.
+ *
+ * Field permission operations can only be view or edit, in the
+ * context of one's own content or that of others. Constrast
+ * with content types where we also have to worry about who can
+ * create or delete content.
+ */
+function film_links_permission() {
+  // Note: This would be very easy to generate programatically,
+  // but it's all typed out here for clarity.
+  // The key text is the machine name of the permission.
+  $perms['delete any film link status'] = array('title' => t('Delete any film link'));
+
+  return $perms;
+}
 
 function _film_link_role_autocomplete($string) {
   $matches = array();
- watchdog('_film_link_role_autocomplete',$string);
+//  watchdog('_film_link_role_autocomplete',$string);
   // Some fantasy DB table which holds cities
   $query = db_select('film_link_role', 'r');
  
@@ -141,6 +161,7 @@ function _film_link_role_autocomplete($string) {
   $query->fields('r', array('name','rid'));
   $query->isNull('r.pid');
   $query->condition('r.name', '%' . db_like($string) . '%', 'LIKE');
+  $query->orderBy('r.name');
   $query->range(0, 18);
   $return = $query->execute();
  
@@ -155,35 +176,38 @@ function _film_link_role_autocomplete($string) {
 
 function _film_link_subrole_list_ajax() {
   $matches['_none'] = '--';
+
   $role = $_POST['role'];
   if (!empty($role)) {
     $matches = _film_link_get_subroles($role);
-    watchdog('f-----',$role);
+
     $role_details = film_links_get_role_details(NULL,NULL,$role);
-    watchdog('fgf','<pre>'.print_r($role_details,TRUE).'</pre>');
-    $matches['role_details'] = $role_details['film_character'];
-        watchdog('fgf','<pre>'.print_r($matches,TRUE).'</pre>');
+    if (!empty($role_details)) {
+      $matches['role_details'] = $role_details['film_character'];
+    }
   }
+  $matches['_other'] = 'Other';  
   // return for JS
   drupal_json_output($matches);
-  
 }
 
 function _film_link_get_subroles($role) {
   $matches = array();
   $role_details = film_links_get_role_details(NULL, NULL, $role);
-  // Some fantasy DB table which holds cities
-  $query = db_select('film_link_role', 'r');
+  if (!empty($role_details)) {
+    // Some fantasy DB table which holds cities
+    $query = db_select('film_link_role', 'r');
 
-  // Select rows that match the string
-  $query->fields('r', array('name','rid'));
-  $query->condition('r.pid',$role_details['rid'],'=');
-  //$query->range(0, 10);
-  $return = $query->execute();
+    // Select rows that match the string
+    $query->fields('r', array('name','rid'));
+    $query->condition('r.pid',$role_details['rid'],'=');
+    //$query->range(0, 10);
+    $return = $query->execute();
 
-  // add matches to $matches  
-  foreach ($return as $row) {
-    $matches[$row->rid] = check_plain($row->name);
+    // add matches to $matches  
+    foreach ($return as $row) {
+      $matches[$row->rid] = check_plain($row->name);
+    }
   }
   return $matches;
 }
@@ -207,7 +231,7 @@ function film_links_get_role_details($rid = NULL,$pid = NULL, $role_name = NULL)
   
   $result = $query->execute();
   
-  $role = '';
+  $role = array();
   
   foreach($result as $row) {
     $role['name'] = $row->name;
@@ -312,27 +336,30 @@ function _film_links_exist($film_id,$person_id,$role_id,$sub_role_id) {
   return $item_found;
 }
 
-
+function film_links_get_link_table($film_id=NULL,$person_id = NULL, $role = NULL, $role_exclude = NULL, $show_role = FALSE) {
+  $output = film_links_get_links($film_id,$person_id, $role, $role_exclude, $show_role);
+  return drupal_render($output);
+}
 /**
  * Get list of films / people / characters
  * Either the filmID or the person ID needs to be NULL. Otherwise we will assume
  * just the film ID is provided.
  */
-function film_links_get_links($film_id=NULL,$person_id = NULL, $role = NULL, $role_exclude = NULL, $show_role = FALSE,$show_delete = 0) {
+function film_links_get_links($film_id=NULL,$person_id = NULL, $role = NULL, $role_exclude = NULL, $show_role = FALSE) {
   $header = array();
   if (!empty($film_id)) {
     if ($show_role == TRUE)  $header[] = array('data' => t('Role'), 'field' => 'role');
     $header[] = array('data' => t('Person'), 'field' => 'person');
     $header[] = array('data' => t('Character'), 'field' => 'character');
-    $header[] = array('data' => t('Sub role'), 'field' => 'sub_role'); 
+    //$header[] = array('data' => t('Sub role'), 'field' => 'sub_role'); 
   } else {
     if ($show_role == TRUE) $header[] = array('data' => t('Role'), 'field' => 'role');
     $header[] = array('data' => t('Film'), 'field' => 'film');
     $header[] = array('data' => t('Character'), 'field' => 'character');
-    $header[] = array('data' => t('Sub role'), 'field' => 'sub_role');
+    //$header[] = array('data' => t('Sub role'), 'field' => 'sub_role');
   }
   
-  if ($show_delete == 1) {
+  if (user_access('delete any film link status')) {
     $header[] = array('data' => ' ', 'field' => 'delete');
   }
   
@@ -344,7 +371,7 @@ function film_links_get_links($film_id=NULL,$person_id = NULL, $role = NULL, $ro
   if (!empty($person_id)) {
     $query->condition('l.pid',$person_id,'=');
   }
-  
+
   if (!empty($role)) {
     $query->condition('l.rid',$role,'IN');
   }
@@ -369,29 +396,38 @@ function film_links_get_links($film_id=NULL,$person_id = NULL, $role = NULL, $ro
   $query->addField('f', 'title', 'film');
   $query->addField('r', 'name' , 'role');
   $query->addField('sr','name' , 'subrole');
+  $query->orderBy('r.name');
   $result = $query->execute();
 
   $rows = array();
   foreach($result  as $row) {
-    $row_array = array();
-    $row_array['role'] = $row->role;
+    if ($show_role == TRUE) $rows[$row->link_id]['role'] = $row->role;
     
     // Will need to add the character and sub role here as well.
     if (!empty($film_id)) {
-      $row_array['person'] = l($row->person,url('node/' . $row->person_id));
+      $rows[$row->link_id]['person'] = l($row->person,url('node/' . $row->person_id, array('absolute' => TRUE)));
     } else {
-      $row_array['film'] = l($row->film,url('node/' . $row->film_id));
+      $rows[$row->link_id]['film'] = l($row->film,url('node/' . $row->film_id, array('absolute' => TRUE)));
     }
     
     if (!empty($row->film_character)) {
-      $row_array['film_character'] = $row->film_character;
+      $rows[$row->link_id]['film_character'] = $row->film_character;
     } else {
       // No character specified
-      $row_array['film_character'] = '&nbsp;';      
+      $rows[$row->link_id]['film_character'] = '&nbsp;';      
     }
-    $row_array['sub_role'] = $row->subrole;
-    $row_array['delete'] = l(t('Delete'),'film_links/delete/' . $row->link_id);
-    $rows[] = $row_array;
+//    $rows[$row->link_id]['sub_role'] = $row->subrole;
+    if (user_access('delete any film link status')) {
+      $destination = drupal_get_destination();
+      $rows[$row->link_id]['delete'] = array(
+        'data' => array(
+          '#type' => 'link',
+          '#title' => 'delete',
+          '#href' => 'film-link/delete/' . $row->link_id,
+          '#options' => array('query' =>$destination),
+        ),  
+      );
+    }
   }
   
   $output['table'] = array(
@@ -404,3 +440,28 @@ function film_links_get_links($film_id=NULL,$person_id = NULL, $role = NULL, $ro
   return $output;  
 }
 
+/*
+ * We save the item to the database
+ */
+function film_links_role_save($role_name,$role_parent_id = NULL,$character = 0) {
+  //
+  $query = db_insert('film_link_role');
+  $query->fields(
+    array (
+      'pid' => $role_parent_id,
+      'name' => $role_name,
+      'deleted' => 0,
+      'film_character' => $character,
+    )
+  );
+  try {
+    $lastid = $query->execute();
+  } catch (Exception $e) {
+    drupal_set_message(t('An error occurred inserting a role item. Check the log files for more information'),'error');
+    watchdog('film_links','Error inserting item : ' . $e,NULL,WATCHDOG_ERROR);      
+    return FALSE;
+  }
+  return $lastid;      
+}
+ 
+ 

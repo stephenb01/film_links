@@ -23,10 +23,18 @@
  * @return
  *   Form array to be rendered
  */
-function _film_link_role_delete() {
+function _film_link_role_delete($link_id) {
+
+  $destination = $_GET['destination'];
   _film_links_role_link_delete($link_id) ;
 
   // Return to the calling page.
+  if (!empty($destination)) {
+    drupal_goto($destination);
+  } else {
+    drupal_goto('node/11');
+  }
+
 }
 
 
@@ -39,7 +47,7 @@ function _film_links_role_link_delete($link_id) {
   // First we delete all the sub 
   // We need to make sure we don't delete everything which is the case if the 
   // role id is NULL
-  if (!empty($role_id)) {
+  if (!empty($link_id)) {
     $query = db_delete('film_link');
     $query->condition('lid',$link_id,'=');
 
