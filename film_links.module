@@ -100,13 +100,13 @@ function film_links_menu() {
   );     
 
  
-  $items['film-link/role-search/autocomplete'] = array(
+  $items['js/film_links/role_search'] = array(
     'page callback' => '_film_link_role_autocomplete',
     'access callback' => true , //array('access example autocomplete'),
     'type' => MENU_CALLBACK
   ); 
 
-  $items['film-link/subrole-search/autocomplete'] = array(
+  $items['js/film_links/subrole_search'] = array(
     'page callback' => '_film_link_subrole_list_ajax',
     'access callback' => TRUE, //array('access example autocomplete'), 
     'type' => MENU_CALLBACK
@@ -130,6 +130,26 @@ function film_links_menu() {
   return $items;
 }
 
+  function film_links_js() {
+    return array(
+      'role_search' => array(
+        'callback'     => '_film_link_role_autocomplete',
+//        'includes'     => array('theme', 'unicode'),
+//        'dependencies' => array('locale', 'filter', 'node'),
+        'bootstrap'    => DRUPAL_BOOTSTRAP_CONSTANT,
+//        'file'         => 'film_general.module',
+//        'access arguments' => array('permission'),
+//        'access callback'  => 'callback function',
+ //       'page arguments'  => array(1)
+      ),      
+      'subrole_search' => array(
+        'callback'     => '_film_link_subrole_list_ajax',
+        'bootstrap'    => DRUPAL_BOOTSTRAP_CONSTANT,
+      ),      
+    );
+  }
+    
+
 /**
  * Implements hook_permission().
  *
@@ -142,10 +162,10 @@ function film_links_menu() {
  * create or delete content.
  */
 function film_links_permission() {
-  // Note: This would be very easy to generate programatically,
-  // but it's all typed out here for clarity.
-  // The key text is the machine name of the permission.
+
   $perms['delete any film link status'] = array('title' => t('Delete any film link'));
+  $perms['edit people'] = array('title' => t('Edit people'));
+  $perms['edit films'] = array('title' => t('Edit films'));
 
   return $perms;
 }
@@ -345,23 +365,23 @@ function film_links_get_link_table($film_id=NULL,$person_id = NULL, $role = NULL
  * Either the filmID or the person ID needs to be NULL. Otherwise we will assume
  * just the film ID is provided.
  */
-function film_links_get_links($film_id=NULL,$person_id = NULL, $role = NULL, $role_exclude = NULL, $show_role = FALSE) {
-  $header = array();
-  if (!empty($film_id)) {
-    if ($show_role == TRUE)  $header[] = array('data' => t('Role'), 'field' => 'role');
-    $header[] = array('data' => t('Person'), 'field' => 'person');
-    $header[] = array('data' => t('Character'), 'field' => 'character');
-    //$header[] = array('data' => t('Sub role'), 'field' => 'sub_role'); 
-  } else {
-    if ($show_role == TRUE) $header[] = array('data' => t('Role'), 'field' => 'role');
-    $header[] = array('data' => t('Film'), 'field' => 'film');
-    $header[] = array('data' => t('Character'), 'field' => 'character');
-    //$header[] = array('data' => t('Sub role'), 'field' => 'sub_role');
-  }
-  
-  if (user_access('delete any film link status')) {
-    $header[] = array('data' => ' ', 'field' => 'delete');
-  }
+function film_links_get_links($film_id=NULL,$person_id = NULL, $role = NULL, $role_exclude = NULL, $show_role = FALSE, $show_edit = TRUE) {
+//  $header = array();
+//  if (!empty($film_id)) {
+//    if ($show_role == TRUE)  $header[] = array('data' => t('Role'), 'field' => 'role');
+//    $header[] = array('data' => t('Person'), 'field' => 'person');
+//    $header[] = array('data' => t('Character'), 'field' => 'character');
+//    //$header[] = array('data' => t('Sub role'), 'field' => 'sub_role'); 
+//  } else {
+//    if ($show_role == TRUE) $header[] = array('data' => t('Role'), 'field' => 'role');
+//    $header[] = array('data' => t('Film'), 'field' => 'film');
+//    $header[] = array('data' => t('Character'), 'field' => 'character');
+//    //$header[] = array('data' => t('Sub role'), 'field' => 'sub_role');
+//  }
+//  
+//  if (user_access('delete any film link status')) {
+//    $header[] = array('data' => ' ', 'field' => 'delete');
+//  }
   
   $query = db_select('film_link','l');
   if (!empty($film_id)) {
@@ -400,43 +420,160 @@ function film_links_get_links($film_id=NULL,$person_id = NULL, $role = NULL, $ro
   $result = $query->execute();
 
   $rows = array();
+  $results = '';
+  $results_role = '';
+  $results_character = '';
+  $results_person = '';
+  $results_film = '';
+  
+  $module_path = drupal_get_path('module', 'film_links');
   foreach($result  as $row) {
-    if ($show_role == TRUE) $rows[$row->link_id]['role'] = $row->role;
-    
-    // Will need to add the character and sub role here as well.
-    if (!empty($film_id)) {
-      $rows[$row->link_id]['person'] = l($row->person,url('node/' . $row->person_id, array('absolute' => TRUE)));
-    } else {
-      $rows[$row->link_id]['film'] = l($row->film,url('node/' . $row->film_id, array('absolute' => TRUE)));
+    if ($show_role == TRUE) {
+//      $rows[$row->link_id]['role'] = $row->role;
+      $results_role = $row->role;
     }
+    // Will need to add the character and sub role here as well.
+    $edit_link = '';
     
     if (!empty($row->film_character)) {
-      $rows[$row->link_id]['film_character'] = $row->film_character;
+//      $rows[$row->link_id]['film_character'] = $row->film_character;
+      $results_character =  $row->film_character;
     } else {
       // No character specified
-      $rows[$row->link_id]['film_character'] = '&nbsp;';      
+//      $rows[$row->link_id]['film_character'] = '&nbsp;';    
+      $results_character = '';
     }
+     
+    if (!empty($film_id)) {
+//      $rows[$row->link_id]['person'] = l($row->person,url('node/' . $row->person_id, array('absolute' => TRUE)));
+      $results_person = l($row->person,url('node/' . $row->person_id, array('absolute' => TRUE)));
+      $options = array(
+               'attributes' => array(
+                 'class' => array('edit-link'),
+               ),
+               'html' => TRUE,
+             );  
+      
+      //$edit_link .=  '<div class="edit-link">' . l('<img src="/' . $module_path . '/image/edit.png" />', 'node/' . $row->person_id . '/edit', $options) . '</div>';      
+      if (user_access('edit people')) {
+        $edit_link = l('<img src="/' . $module_path . '/image/edit.png" />', 'node/' . $row->person_id . '/edit', $options);
+      }
+        
+    } 
+    
+    if (!empty($person_id)) {
+//      $rows[$row->link_id]['film'] = l($row->film,url('node/' . $row->film_id, array('absolute' => TRUE)));
+      $results_film = l($row->film,url('node/' . $row->film_id, array('absolute' => TRUE)));
+      $options = array(
+               'attributes' => array(
+                 'class' => array('edit-link'),
+               ),
+               'html' => TRUE,
+             );      
+      //$edit_link .=  '<div class="edit-link">' . l('<img src="/' . $module_path . '/image/edit.png" />', 'node/' . $row->film_id . '/edit', $options) . '</div>';      
+      if (user_access('edit films')) {
+        $edit_link = l('<img src="/' . $module_path . '/image/edit.png" />', 'node/' . $row->film_id . '/edit', $options);
+      }
+      
+    }
+    
+    $delete_link = '';
+    
 //    $rows[$row->link_id]['sub_role'] = $row->subrole;
     if (user_access('delete any film link status')) {
-      $destination = drupal_get_destination();
-      $rows[$row->link_id]['delete'] = array(
-        'data' => array(
-          '#type' => 'link',
-          '#title' => 'delete',
-          '#href' => 'film-link/delete/' . $row->link_id,
-          '#options' => array('query' =>$destination),
-        ),  
-      );
+//      $destination = drupal_get_destination();
+//      $rows[$row->link_id]['delete'] = array(
+//        'data' => array(
+//          '#type' => 'link',
+//          '#title' => 'delete',
+//          '#href' => 'film-link/delete/' . $row->link_id,
+//          '#options' => array('query' =>$destination),
+//        ),  
+//      );
+      
+      $options = array(
+               'attributes' => array(
+                 'class' => array('delete-link'),
+               ),
+               'html' => TRUE,
+             );  
+      
+//      $delete_link .=  '<div class="delete-link">' . l('<img src="/' . $module_path . '/image/delete.png" />', 'film-link/delete/' . $row->link_id, $options) . '</div>';      
+      $delete_link =   l('<img src="/' . $module_path . '/image/delete.png" />', 'film-link/delete/' . $row->link_id, $options);      
+  
+    }
+    
+    // WE now build up the line of information
+    if (!empty($person_id)) {
+ 
+      $result1 = '';
+      
+      if (!empty($results_film)) {
+        if (!empty($result1)) $result1 .= ' : ' . $results_film;
+        else $result1 .= $results_film;
+      }      
+      if (!empty($results_role)) {
+        if (!empty($result1)) $result1 .= ' : ' . $results_role;
+        else $result1 .= $results_role;
+      } 
+      if (!empty($results_person)) {
+        if (!empty($result1)) $result1 .= ' : ' . $results_person;
+        else $result1 .= $results_person;
+      } 
+      
+      if (!empty($results_character)) {
+        if (!empty($result1)) $result1 .= ' played ' . $results_character;
+        else $result1 .= $results_character;
+      }
+             
+      $results .= $result1;
+    } else {
+      $result1 = '';
+
+      if (!empty($results_role)) {
+        if (!empty($result1)) $result1 .= ' : ' . $results_role;
+        else $result1 .= $results_role;
+      }      
+      if (!empty($results_character)) {
+        if (!empty($result1)) $result1 .= ' : ' . $results_character;
+        else $result1 .= $results_character;
+      }
+
+      if (!empty($results_person)) {
+        if (!empty($result1)) $result1 .= ' : ' . $results_person;
+        else $result1 .= $results_person;
+      } 
+      if (!empty($results_film)) {
+        if (!empty($result1)) $result1 .= ' : ' . $results_film;
+        else $result1 .= $results_film;
+      }      
+      
+      $results .= $result1;      
+    }   
+    
+    if ($show_edit == TRUE) {
+      $results .= $edit_link . $delete_link . '<br />';
+    } else {
+      $results .= '<br />';      
     }
   }
+
+  ////  $output['table'] = array(
+//    '#theme' => 'table',
+//    '#header' => $header,
+//    '#rows' => $rows,
+//   // '#empty' => t('There are no roles.'),
+//  );
+  
+  if (empty($results)) {
+    $results = '<div></div>';
+    $output = '';
+  } else {
   
   $output['table'] = array(
-    '#theme' => 'table',
-    '#header' => $header,
-    '#rows' => $rows,
-   // '#empty' => t('There are no roles.'),
+   '#markup' => $results,
   );
-  
+  }
   return $output;  
 }
 
