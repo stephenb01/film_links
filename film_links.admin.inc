@@ -130,8 +130,9 @@ function _film_links_get_roles_table() {
     array('data' => 'group items','field'=>'operations3'),        
     array('data' => ' ','field'=>'operations'),
   );
-$destination = drupal_get_destination();
-dpm($destination);
+  
+  $destination = drupal_get_destination();
+
   $result = _film_links_get_roles(NULL);
 
   $rows = array();

@@ -106,11 +106,11 @@ function film_links_menu() {
     'type' => MENU_CALLBACK
   ); 
 
-  $items['js/film_links/subrole_search'] = array(
-    'page callback' => '_film_link_subrole_list_ajax',
-    'access callback' => TRUE, //array('access example autocomplete'), 
-    'type' => MENU_CALLBACK
-  );
+//  $items['js/film_links/subrole_search'] = array(
+//    'page callback' => '_film_link_subrole_list_ajax',
+//    'access callback' => TRUE, //array('access example autocomplete'), 
+//    'type' => MENU_CALLBACK
+//  );
 
   
   $items['film-link/delete/%'] = array(
@@ -142,10 +142,10 @@ function film_links_menu() {
 //        'access callback'  => 'callback function',
  //       'page arguments'  => array(1)
       ),      
-      'subrole_search' => array(
-        'callback'     => '_film_link_subrole_list_ajax',
-        'bootstrap'    => DRUPAL_BOOTSTRAP_CONSTANT,
-      ),      
+//      'subrole_search' => array(
+//        'callback'     => '_film_link_subrole_list_ajax',
+//        'bootstrap'    => DRUPAL_BOOTSTRAP_CONSTANT,
+//      ),      
     );
   }
     
@@ -170,17 +170,19 @@ function film_links_permission() {
   return $perms;
 }
 
+
+// ** SB ** To get role from differnet taxonomy depending on the node type
 function _film_link_role_autocomplete($string) {
   $matches = array();
 //  watchdog('_film_link_role_autocomplete',$string);
   // Some fantasy DB table which holds cities
-  $query = db_select('film_link_role', 'r');
+  $query = db_select('taxonomy_term_data', 'r');
  
   // Select rows that match the string
 
   $query->fields('r', array('name','rid'));
-  $query->isNull('r.pid');
   $query->condition('r.name', '%' . db_like($string) . '%', 'LIKE');
+  $query->condition('r.vid',2); // ** SB ** Need to replace this ID with the right one.
   $query->orderBy('r.name');
   $query->range(0, 18);
   $return = $query->execute();
@@ -194,60 +196,65 @@ function _film_link_role_autocomplete($string) {
   drupal_json_output($matches);
 }
 
-function _film_link_subrole_list_ajax() {
-  $matches['_none'] = '--';
+//function _film_link_subrole_list_ajax() {
+//  $matches['_none'] = '--';
+//
+//  $role = $_POST['role'];
+//  if (!empty($role)) {
+//    $matches = _film_link_get_subroles($role);
+//
+//    $role_details = film_links_get_role_details(NULL,NULL,$role);
+//    if (!empty($role_details)) {
+//      $matches['role_details'] = $role_details['film_character'];
+//    }
+//  }
+//  $matches['_other'] = 'Other';  
+//  // return for JS
+//  drupal_json_output($matches);
+//}
+//
+//function _film_link_get_subroles($role) {
+//  $matches = array();
+//  $role_details = film_links_get_role_details(NULL, NULL, $role);
+//  if (!empty($role_details)) {
+//    // Some fantasy DB table which holds cities
+//    $query = db_select('film_link_role', 'r');
+//
+//    // Select rows that match the string
+//    $query->fields('r', array('name','rid'));
+//    $query->condition('r.pid',$role_details['rid'],'=');
+//    //$query->range(0, 10);
+//    $return = $query->execute();
+//
+//    // add matches to $matches  
+//    foreach ($return as $row) {
+//      $matches[$row->rid] = check_plain($row->name);
+//    }
+//  }
+//  return $matches;
+//}
 
-  $role = $_POST['role'];
-  if (!empty($role)) {
-    $matches = _film_link_get_subroles($role);
 
-    $role_details = film_links_get_role_details(NULL,NULL,$role);
-    if (!empty($role_details)) {
-      $matches['role_details'] = $role_details['film_character'];
-    }
-  }
-  $matches['_other'] = 'Other';  
-  // return for JS
-  drupal_json_output($matches);
-}
-
-function _film_link_get_subroles($role) {
-  $matches = array();
-  $role_details = film_links_get_role_details(NULL, NULL, $role);
-  if (!empty($role_details)) {
-    // Some fantasy DB table which holds cities
-    $query = db_select('film_link_role', 'r');
-
-    // Select rows that match the string
-    $query->fields('r', array('name','rid'));
-    $query->condition('r.pid',$role_details['rid'],'=');
-    //$query->range(0, 10);
-    $return = $query->execute();
-
-    // add matches to $matches  
-    foreach ($return as $row) {
-      $matches[$row->rid] = check_plain($row->name);
-    }
-  }
-  return $matches;
-}
-
-function film_links_get_role_details($rid = NULL,$pid = NULL, $role_name = NULL) {
-  $query = db_select('film_link_role','r');
+// Need to rewrite this so I look up roles 
+// $type - this is the type the role is associated to.
+// THis can be film , people or organisation. Film and people will use the same taxonomy term
+function film_links_get_role_details($rid = NULL, $type = NULL, $role_name = NULL) {
+  
+  // ** SB ** Need to get the correct tax vocab from the system
+  $vid = _film_links_get_vid($type);
+  $query = db_select('taxonomy_term_data','r');
   if(!empty($role_name)) {
     $query->condition('r.name',$role_name,'=');
   }
   
   if(!empty($rid)) {  
-  $query->condition('r.rid',$rid,'=');
+    $query->condition('r.tid',$rid,'=');
   }
-  
-  if(!empty($pid)) {
-    $query->condition('r.pid',$pid,'=');
-  } else {
-    $query->isNull('r.pid');
-  }
-  $query->fields('r', array('rid','pid','name','film_character'));
+
+  $query->condition('r.vid',$vid,'=');
+
+  $query->leftJoin('film_role_character','t','t.trid = r.tid');  //
+  $query->fields('r', array('tid','name'));
   
   $result = $query->execute();
   
@@ -255,9 +262,8 @@ function film_links_get_role_details($rid = NULL,$pid = NULL, $role_name = NULL)
   
   foreach($result as $row) {
     $role['name'] = $row->name;
-    $role['rid'] = $row->rid;
-    $role['pid'] = $row->pid;
-    $role['film_character'] = $row->film_character;
+    $role['rid'] = $row->tid;
+    $role['film_character'] = isset($role->trid);
   }
   
   return $role;
@@ -278,14 +284,13 @@ function _film_links_details_ajax () {
   drupal_json_output($data);
 }
 
-function film_links_add($film_id,$person_id,$role_id,$sub_role_id,$character = NULL) {
-  $query = db_insert('film_link');
+function film_links_add($node_id,$link_id,$role_id,$character = NULL) {
+  $query = db_insert('film_links');
   $query->fields(
     array (
-      'fid' => $film_id,
-      'pid' => $person_id,
-      'rid' => $role_id,
-      'srid' => $sub_role_id,
+      'nid1' => $node_id,
+      'nid2' => $link_id,
+      'trid' => $role_id,
       'film_character' => $character,
     )
   );
@@ -300,51 +305,52 @@ function film_links_add($film_id,$person_id,$role_id,$sub_role_id,$character = N
   return TRUE;
 }
 
-function _film_links_update($film_id,$person_id,$role_id,$sub_role_id,$character,$description = NULL) {
-  // Update the database
-  $query = db_update('film_link');
-  $query->fields(
-      array(
-        'film_character' => $value,
-        //'description' => $format,
-      )
-    );
-  $query->condition('fid',$film_id,'=');
-  $query->condition('pid',$person_id,'=');
-  $query->condition('rid',$role_id,'=');
-  $query->condition('srid',$sub_role_id,'=');
-  try {
-    $query->execute();
-  } catch (Exception $e) {
-    drupal_set_message(t('An error occurred updating a person link. Check the log files for more information'),'error');
-    watchdog('film_link','Error updating item : ' . $e,NULL,WATCHDOG_ERROR);      
-    return FALSE;
-  }
-  return TRUE;
-}
-function _film_links_delete($film_id,$person_id,$role_id,$sub_role_id) {
-  $query = db_delete('film_link');
-  $query->condition('fid',$film_id,'=');
-  $query->condition('pid',$person_id,'=');
-  $query->condition('rid',$role_id,'=');
-  $query->condition('srid',$sub_role_id,'=');
-  try {
-    $query->execute();
-  } catch (Exception $e) {
-    drupal_set_message(t('An error occurred removing a person link. Check the log files for more information'),'error');
-    watchdog('film_link','Error removing item : ' . $e,NULL,WATCHDOG_ERROR);
-    return FALSE;
-  }
-  return TRUE;
-}
-function _film_links_exist($film_id,$person_id,$role_id,$sub_role_id) {
-  $query = db_select('film_link', 'l');
-  $query->condition('l.fid',$film_id,'=');
-  $query->condition('l.pid',$person_id,'=');
-  $query->condition('l.rid',$role_id,'=');
+//function _film_links_update($film_id,$person_id,$role_id,$sub_role_id,$character,$description = NULL) {
+//  // Update the database
+//  $query = db_update('film_link');
+//  $query->fields(
+//      array(
+//        'film_character' => $value,
+//        //'description' => $format,
+//      )
+//    );
+//  $query->condition('fid',$film_id,'=');
+//  $query->condition('pid',$person_id,'=');
+//  $query->condition('rid',$role_id,'=');
+//  $query->condition('srid',$sub_role_id,'=');
+//  try {
+//    $query->execute();
+//  } catch (Exception $e) {
+//    drupal_set_message(t('An error occurred updating a person link. Check the log files for more information'),'error');
+//    watchdog('film_link','Error updating item : ' . $e,NULL,WATCHDOG_ERROR);      
+//    return FALSE;
+//  }
+//  return TRUE;
+//}
+//function _film_links_delete($film_id,$person_id,$role_id,$sub_role_id) {
+//  $query = db_delete('film_link');
+//  $query->condition('fid',$film_id,'=');
+//  $query->condition('pid',$person_id,'=');
+//  $query->condition('rid',$role_id,'=');
+//  $query->condition('srid',$sub_role_id,'=');
+//  try {
+//    $query->execute();
+//  } catch (Exception $e) {
+//    drupal_set_message(t('An error occurred removing a person link. Check the log files for more information'),'error');
+//    watchdog('film_link','Error removing item : ' . $e,NULL,WATCHDOG_ERROR);
+//    return FALSE;
+//  }
+//  return TRUE;
+//}
+// ** SB ** Change hte table structure here to the new one
+function _film_links_exist($node_id,$link_id,$role_id,$sub_role_id) {
+  $query = db_select('film_links', 'l');
+  $query->condition('l.nid1',$node_id,'=');
+  $query->condition('l.nid2',$link_id,'=');
+  $query->condition('l.trid',$role_id,'=');
   $query->condition('l.srid',$sub_role_id,'=');
   $query->condition('r.pid',NULL,'=');
-  $query->fields('l',array('fid','film_character'));
+  $query->fields('l',array('nid','film_character'));
   
   $result = $query->execute(); //->fetchAllAssoc();
   
@@ -365,57 +371,44 @@ function film_links_get_link_table($film_id=NULL,$person_id = NULL, $role = NULL
  * Either the filmID or the person ID needs to be NULL. Otherwise we will assume
  * just the film ID is provided.
  */
-function film_links_get_links($film_id=NULL,$person_id = NULL, $role = NULL, $role_exclude = NULL, $show_role = FALSE, $show_edit = TRUE) {
-//  $header = array();
-//  if (!empty($film_id)) {
-//    if ($show_role == TRUE)  $header[] = array('data' => t('Role'), 'field' => 'role');
-//    $header[] = array('data' => t('Person'), 'field' => 'person');
-//    $header[] = array('data' => t('Character'), 'field' => 'character');
-//    //$header[] = array('data' => t('Sub role'), 'field' => 'sub_role'); 
-//  } else {
-//    if ($show_role == TRUE) $header[] = array('data' => t('Role'), 'field' => 'role');
-//    $header[] = array('data' => t('Film'), 'field' => 'film');
-//    $header[] = array('data' => t('Character'), 'field' => 'character');
-//    //$header[] = array('data' => t('Sub role'), 'field' => 'sub_role');
-//  }
-//  
-//  if (user_access('delete any film link status')) {
-//    $header[] = array('data' => ' ', 'field' => 'delete');
-//  }
-  
-  $query = db_select('film_link','l');
-  if (!empty($film_id)) {
-    $query->condition('l.fid',$film_id,'=');
-  }
+function film_links_get_links($node,$person_id = NULL, $role = NULL, $role_exclude = NULL, $show_role = FALSE, $show_edit = TRUE) {
+  // Need to pass just hte ID of the node from there I can detect the type and hence the output of the node.
+  // There is no need for me to pass two nodes as they will never appear at the same time.
+ 
+  $query = db_select('film_links','l');
 
-  if (!empty($person_id)) {
-    $query->condition('l.pid',$person_id,'=');
-  }
+  $db_or = db_or();
+  $db_or->condition('l.nid1',$node->nid);
+  $db_or->condition('l.nid2',$node->nid);
+  $query->condition($db_or);
 
   if (!empty($role)) {
-    $query->condition('l.rid',$role,'IN');
+    $query->condition('l.trid',$role,'IN');
   }
   
   if (!empty($role_exclude)) {
-    $query->condition('l.rid',$role_exclude,'NOT IN');
+    $query->condition('l.trid',$role_exclude,'NOT IN');
   }
   
-  $query->leftJoin('node','p','p.nid = l.pid'); // Person
-  $query->leftJoin('node','f','f.nid = l.fid');  // Film
-  $query->leftJoin('film_link_role','r','r.rid = l.rid'); // Role
-  $query->leftJoin('film_link_role','sr','sr.rid = l.srid'); // Sub role
+  $query->leftJoin('node','n1','n1.nid = l.nid1'); // 
+  $query->leftJoin('node','n2','n2.nid = l.nid2');  //
+  
+  $query->leftJoin('taxonomy_term_data','r','r.tid = l.trid'); // Role
   
   $query->addField('l', 'lid','link_id');
-  $query->addField('l', 'fid','film_id');
-  $query->addField('l', 'pid','person_id');
-  $query->addField('l', 'rid','role_id');
+  $query->addField('l', 'nid1','nid1');
+  $query->addField('l', 'nid2','nid2');
+  $query->addField('l', 'trid','role_id');
   $query->addField('l', 'film_character','film_character');
   
-  $query->addField('p', 'title', 'person');
-  $query->addField('p', 'nid', 'person_nid');
-  $query->addField('f', 'title', 'film');
+  $query->addField('n1', 'title', 'n1_title');
+  $query->addField('n1', 'type', 'n1_type');
+  $query->addField('n1', 'nid', 'n1_nid');
+  $query->addField('n2', 'title', 'n2_title');
+  $query->addField('n2', 'type', 'n2_type');
+  $query->addField('n2', 'nid', 'n2_nid');
+  
   $query->addField('r', 'name' , 'role');
-  $query->addField('sr','name' , 'subrole');
   $query->orderBy('r.name');
   $result = $query->execute();
 
@@ -444,39 +437,61 @@ function film_links_get_links($film_id=NULL,$person_id = NULL, $role = NULL, $ro
       $results_character = '';
     }
      
-    if (!empty($film_id)) {
-//      $rows[$row->link_id]['person'] = l($row->person,url('node/' . $row->person_id, array('absolute' => TRUE)));
-      $results_person = l($row->person,url('node/' . $row->person_id, array('absolute' => TRUE)));
-      $options = array(
-               'attributes' => array(
-                 'class' => array('edit-link'),
-               ),
-               'html' => TRUE,
-             );  
-      
-      //$edit_link .=  '<div class="edit-link">' . l('<img src="/' . $module_path . '/image/edit.png" />', 'node/' . $row->person_id . '/edit', $options) . '</div>';      
-      if (user_access('edit people')) {
-        $edit_link = l('<img src="/' . $module_path . '/image/edit.png" />', 'node/' . $row->person_id . '/edit', $options);
-      }
-        
-    } 
-    
-    if (!empty($person_id)) {
-//      $rows[$row->link_id]['film'] = l($row->film,url('node/' . $row->film_id, array('absolute' => TRUE)));
-      $results_film = l($row->film,url('node/' . $row->film_id, array('absolute' => TRUE)));
-      $options = array(
-               'attributes' => array(
-                 'class' => array('edit-link'),
-               ),
-               'html' => TRUE,
-             );      
-      //$edit_link .=  '<div class="edit-link">' . l('<img src="/' . $module_path . '/image/edit.png" />', 'node/' . $row->film_id . '/edit', $options) . '</div>';      
-      if (user_access('edit films')) {
-        $edit_link = l('<img src="/' . $module_path . '/image/edit.png" />', 'node/' . $row->film_id . '/edit', $options);
-      }
-      
+    if ($row->nid1 == $node->nid) {
+      $link_id = $row->nid2;
+      $link_name = $row->n2_title;
+    } else {
+      $link_id = $row->nid1;      
+      $link_name = $row->n1_title;
     }
+    switch ($node->type) {
+      case 'film':
+        //$rows[$row->link_id]['person'] = l($row->person,url('node/' . $row->person_id, array('absolute' => TRUE)));
+        $results_person = l($link_name,url('node/' . $link_id, array('absolute' => TRUE)));
+        $options = array(
+                 'attributes' => array(
+                   'class' => array('edit-link'),
+                 ),
+                 'html' => TRUE,
+               );  
+
+        //$edit_link .=  '<div class="edit-link">' . l('<img src="/' . $module_path . '/image/edit.png" />', 'node/' . $row->person_id . '/edit', $options) . '</div>';      
+        if (user_access('edit people')) {
+          $edit_link = l('<img src="/' . $module_path . '/image/edit.png" />', 'node/' . $link_id . '/edit', $options);
+        }
+        break;
     
+      case 'people': 
+        //$rows[$row->link_id]['film'] = l($row->film,url('node/' . $row->film_id, array('absolute' => TRUE)));
+        $results_film = l($link_name,url('node/' . $link_id, array('absolute' => TRUE)));
+        $options = array(
+                 'attributes' => array(
+                   'class' => array('edit-link'),
+                 ),
+                 'html' => TRUE,
+               );      
+        //$edit_link .=  '<div class="edit-link">' . l('<img src="/' . $module_path . '/image/edit.png" />', 'node/' . $row->film_id . '/edit', $options) . '</div>';      
+        if (user_access('edit films')) {
+          $edit_link = l('<img src="/' . $module_path . '/image/edit.png" />', 'node/' . $link_id . '/edit', $options);
+        }
+        break;
+        
+      case 'organisation':
+        //$rows[$row->link_id]['person'] = l($row->person,url('node/' . $row->person_id, array('absolute' => TRUE)));
+        $results_person = l($link_name,url('node/' . $link_id, array('absolute' => TRUE)));
+        $options = array(
+                 'attributes' => array(
+                   'class' => array('edit-link'),
+                 ),
+                 'html' => TRUE,
+               );  
+
+        //$edit_link .=  '<div class="edit-link">' . l('<img src="/' . $module_path . '/image/edit.png" />', 'node/' . $row->person_id . '/edit', $options) . '</div>';      
+        if (user_access('edit people')) {
+          $edit_link = l('<img src="/' . $module_path . '/image/edit.png" />', 'node/' . $link_id . '/edit', $options);
+        }
+        break;        
+      }
     $delete_link = '';
     
 //    $rows[$row->link_id]['sub_role'] = $row->subrole;
@@ -504,51 +519,76 @@ function film_links_get_links($film_id=NULL,$person_id = NULL, $role = NULL, $ro
     }
     
     // WE now build up the line of information
-    if (!empty($person_id)) {
- 
-      $result1 = '';
-      
-      if (!empty($results_film)) {
-        if (!empty($result1)) $result1 .= ' : ' . $results_film;
-        else $result1 .= $results_film;
-      }      
-      if (!empty($results_role)) {
-        if (!empty($result1)) $result1 .= ' : ' . $results_role;
-        else $result1 .= $results_role;
-      } 
-      if (!empty($results_person)) {
-        if (!empty($result1)) $result1 .= ' : ' . $results_person;
-        else $result1 .= $results_person;
-      } 
-      
-      if (!empty($results_character)) {
-        if (!empty($result1)) $result1 .= ' played ' . $results_character;
-        else $result1 .= $results_character;
-      }
-             
-      $results .= $result1;
-    } else {
-      $result1 = '';
+    switch ($node->type) {
+      case 'film':
+        $result1 = '';
 
-      if (!empty($results_role)) {
-        if (!empty($result1)) $result1 .= ' : ' . $results_role;
-        else $result1 .= $results_role;
-      }      
-      if (!empty($results_character)) {
-        if (!empty($result1)) $result1 .= ' : ' . $results_character;
-        else $result1 .= $results_character;
-      }
+        if (!empty($results_role)) {
+          if (!empty($result1)) $result1 .= ' : ' . $results_role;
+          else $result1 .= $results_role;
+        }      
+        if (!empty($results_character)) {
+          if (!empty($result1)) $result1 .= ' : ' . $results_character;
+          else $result1 .= $results_character;
+        }
 
-      if (!empty($results_person)) {
-        if (!empty($result1)) $result1 .= ' : ' . $results_person;
-        else $result1 .= $results_person;
-      } 
-      if (!empty($results_film)) {
-        if (!empty($result1)) $result1 .= ' : ' . $results_film;
-        else $result1 .= $results_film;
-      }      
-      
-      $results .= $result1;      
+        if (!empty($results_person)) {
+          if (!empty($result1)) $result1 .= ' : ' . $results_person;
+          else $result1 .= $results_person;
+        } 
+        if (!empty($results_film)) {
+          if (!empty($result1)) $result1 .= ' : ' . $results_film;
+          else $result1 .= $results_film;
+        }      
+
+        $results .= $result1;         
+        break;
+      case 'people':
+        $result1 = '';
+
+        if (!empty($results_film)) {
+          if (!empty($result1)) $result1 .= ' : ' . $results_film;
+          else $result1 .= $results_film;
+        }      
+        if (!empty($results_role)) {
+          if (!empty($result1)) $result1 .= ' : ' . $results_role;
+          else $result1 .= $results_role;
+        } 
+        if (!empty($results_person)) {
+          if (!empty($result1)) $result1 .= ' : ' . $results_person;
+          else $result1 .= $results_person;
+        } 
+
+        if (!empty($results_character)) {
+          if (!empty($result1)) $result1 .= ' played ' . $results_character;
+          else $result1 .= $results_character;
+        }
+
+        $results .= $result1;        
+        break;
+      case 'organisation':
+        $result1 = '';
+
+        if (!empty($results_role)) {
+          if (!empty($result1)) $result1 .= ' : ' . $results_role;
+          else $result1 .= $results_role;
+        }      
+        if (!empty($results_character)) {
+          if (!empty($result1)) $result1 .= ' : ' . $results_character;
+          else $result1 .= $results_character;
+        }
+
+        if (!empty($results_person)) {
+          if (!empty($result1)) $result1 .= ' : ' . $results_person;
+          else $result1 .= $results_person;
+        } 
+        if (!empty($results_film)) {
+          if (!empty($result1)) $result1 .= ' : ' . $results_film;
+          else $result1 .= $results_film;
+        }      
+
+        $results .= $result1;         
+        break;
     }   
     
     if ($show_edit == TRUE) {
@@ -580,25 +620,47 @@ function film_links_get_links($film_id=NULL,$person_id = NULL, $role = NULL, $ro
 /*
  * We save the item to the database
  */
-function film_links_role_save($role_name,$role_parent_id = NULL,$character = 0) {
+function film_links_role_save($role_name,$type,$character = 0) {
   //
-  $query = db_insert('film_link_role');
-  $query->fields(
-    array (
-      'pid' => $role_parent_id,
-      'name' => $role_name,
-      'deleted' => 0,
-      'film_character' => $character,
-    )
-  );
-  try {
-    $lastid = $query->execute();
-  } catch (Exception $e) {
-    drupal_set_message(t('An error occurred inserting a role item. Check the log files for more information'),'error');
-    watchdog('film_links','Error inserting item : ' . $e,NULL,WATCHDOG_ERROR);      
-    return FALSE;
-  }
-  return $lastid;      
+  
+  $vid = _film_links_get_vid($type);
+  dpm($vid);
+  dpm($role_name);
+  dpm($type);
+  $term = new stdClass();
+  $term->name = $role_name;
+  $term->vid = $vid;
+  taxonomy_term_save($term);
+  return $term->tid;  
+//  $query = db_insert('film_link_role');
+//  $query->fields(
+//    array (
+//      'pid' => $role_parent_id,
+//      'name' => $role_name,
+//      'deleted' => 0,
+//      'film_character' => $character,
+//    )
+//  );
+//  try {
+//    $lastid = $query->execute();
+//  } catch (Exception $e) {
+//    drupal_set_message(t('An error occurred inserting a role item. Check the log files for more information'),'error');
+//    watchdog('film_links','Error inserting item : ' . $e,NULL,WATCHDOG_ERROR);      
+//    return FALSE;
+//  }
+//  return $lastid;      
 }
  
- 
+function _film_links_get_vid($type) {
+  dpm($type);
+  switch ($type) {
+    case 'film':
+    case 'people':
+      $vid = 23; // ** SB ** // need to be changed
+      break;
+    case 'organisation':
+      $vid = 23; // ** SB ** // Needs to be changed
+      break;
+  }  
+  return $vid;
+} 

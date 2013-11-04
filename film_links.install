@@ -60,7 +60,7 @@ function film_links_uninstall() {
  * @see hook_schema()
  */
 function film_links_schema() {
-  $schema['film_link'] = array (
+  $schema['film_links'] = array (
     'description' => 'Store the relationship between the file, person and character',
     'fields' => array(
       'lid' => array(
@@ -69,29 +69,23 @@ function film_links_schema() {
         'unsigned' => TRUE,
         'not null' => TRUE,
       ),
-      'fid' => array(
+      'nid1' => array(
           'description' => 'Film ID',
           'type' => 'int',
           'unsigned' => TRUE,
           'not null' => TRUE,
       ),
-      'pid' => array(
+      'nid2' => array(
           'description' => 'Person ID',   
           'type' => 'int',
           'unsigned' => TRUE,
           'not null' => TRUE,
       ),	  
-      'rid' => array(
-          'description' => 'Role ID',          
+      'trid' => array(
+          'description' => 'Taxonomy Role ID',          
           'type' => 'int',
           'unsigned' => TRUE,
           'not null' => TRUE,
-      ),
-      'srid' => array(
-          'description' => 'Sub role ID',          
-          'type' => 'int',
-          'unsigned' => TRUE,
-          'not null' => FALSE,
       ),
       'cid' => array(
           'description' => 'Character ID',          
@@ -115,9 +109,9 @@ function film_links_schema() {
     ),
       'primary key' => array('lid'),
       'indexes' => array(
-        'film_links_idx_film'   => array('fid'),
-        'film_links_idx_person' => array('pid'),
-        'film_links_idx_role' => array('rid'),
+        'film_links_idx_film'   => array('nid1'),
+        'film_links_idx_person' => array('nid2'),
+        'film_links_idx_role' => array('trid'),
         'film_links_idx_character' => array('cid'),
         'film_links_idx_version' => array('vid'),
     ),	  
