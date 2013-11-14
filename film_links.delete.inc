@@ -32,7 +32,7 @@ function _film_link_role_delete($link_id) {
   if (!empty($destination)) {
     drupal_goto($destination);
   } else {
-    drupal_goto('node/11');
+    drupal_goto('/');
   }
 
 }
@@ -48,7 +48,7 @@ function _film_links_role_link_delete($link_id) {
   // We need to make sure we don't delete everything which is the case if the 
   // role id is NULL
   if (!empty($link_id)) {
-    $query = db_delete('film_link');
+    $query = db_delete('film_links');
     $query->condition('lid',$link_id,'=');
 
     try {
