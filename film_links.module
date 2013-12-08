@@ -13,39 +13,49 @@ function film_links_menu() {
   $items['admin/config/film_links'] = array(
     'title' => 'Film links',
     'description' => 'Sets the default user status',
-    'position' => 'left',
-    'weight' => -100,
-    'page callback' => 'system_admin_menu_block_page',
+//    'position' => 'left',
+//    'weight' => -100,
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('film_links_settings'),
     'access arguments' => array('administer site configuration'),
-    'file' => 'system.admin.inc',
-    'file path' => drupal_get_path('module', 'system'),
+    'file' => 'film_links.admin.inc',
+ //   'file path' => drupal_get_path('module', 'system'),
   );
 
+//      'admin/ucl/trial' => array(
+//      'title' => 'Trial',
+//      'description' => 'Administer the intro information and questions.',
+//      'page callback' => 'drupal_get_form',
+//      'page arguments' => array('ucl_trial_settings'),
+//      'access arguments' => array('manage ucl trial settings'),
+//      'file' => 'ucl_trial.admin.inc',
+//    ),
   
-  $items['admin/config/film_links/settings'] = array(
-    'title' => t('Settings'),
-    'page callback' => 'film_links_settings',
-    'access arguments' => array('administer site configuration'),
-    'file' => 'film_links.admin.inc',
-    'type' => MENU_NORMAL_ITEM, 
-  );
-  
-  $items['admin/config/film_links/settings/test'] = array(
-    'title' => t('Settings'),
-    'type' => MENU_DEFAULT_LOCAL_TASK,
-    'weight' => -100,      
-  );
-  
-  $items['admin/config/film_links/settings/roles'] = array(
-    'title' => t('Roles'),
-    //'page callback' => 'film_links_role_settings',
-    'page callback' => 'drupal_get_form',
-    'page arguments' =>  array('film_links_role_add'),        
-    'access arguments' => array('administer site configuration'),
-    'file' => 'film_links.admin.inc',
-    'type' => MENU_LOCAL_TASK,   
-    'weight' => 10,
-  );
+//  
+//  $items['admin/config/film_links/settings'] = array(
+//    'title' => t('Settings'),
+//    'page callback' => 'film_links_settings',
+//    'access arguments' => array('administer site configuration'),
+//    'file' => 'film_links.admin.inc',
+//    'type' => MENU_NORMAL_ITEM, 
+//  );
+//  
+//  $items['admin/config/film_links/settings/test'] = array(
+//    'title' => t('Settings'),
+//    'type' => MENU_DEFAULT_LOCAL_TASK,
+//    'weight' => -100,      
+//  );
+//  
+//  $items['admin/config/film_links/settings/roles'] = array(
+//    'title' => t('Roles'),
+//    //'page callback' => 'film_links_role_settings',
+//    'page callback' => 'drupal_get_form',
+//    'page arguments' =>  array('film_links_role_add'),        
+//    'access arguments' => array('administer site configuration'),
+//    'file' => 'film_links.admin.inc',
+//    'type' => MENU_LOCAL_TASK,   
+//    'weight' => 10,
+//  );
    
   
   $items['admin/config/film_links/settings/roles/delete/%'] = array(
@@ -181,8 +191,9 @@ function _film_link_role_autocomplete($string) {
 
   $query->fields('r', array('name','tid'));
   $query->condition('r.name', '%' . db_like($string) . '%', 'LIKE');
-  $query->condition('r.vid',27); // ** SB ** Need to replace this ID with the right one.
-  $query->orderBy('r.name');
+  $query->condition('r.vid',27); // ** SB ** Need to replace this ID with the right one.  $query->orderBy('r.name');
+  $role_id = _film_links_get_character_role_id();
+  $query->condition('r.tid',array(273), 'NOT IN');
   $query->range(0, 18);
   $return = $query->execute();
  
@@ -666,9 +677,17 @@ function _film_links_get_vid($type) {
     case 'people': //NODE_TYPE_PEOPLE:
       $vid = 27;// PEOPLE_ROLE_VID; // ** SB ** // need to be changed
       break;
-    case 'organisation'://NODE_TYPE_ORGANISATION:
+    case 'organisations'://NODE_TYPE_ORGANISATION:
       $vid = 28; //ORGANISATION_ROLE_VID; // ** SB ** // Needs to be changed
       break;
   }  
   return $vid;
+} 
+
+function _film_links_get_character_role() {
+  return 'Actor';
+} 
+
+function _film_links_get_character_role_id() {
+  return 273;
 } 
