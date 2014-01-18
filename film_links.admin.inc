@@ -23,778 +23,406 @@
  * @return
  *   Form array to be rendered
  */
-function film_links_settings() {
+function film_links_settings($form, &$form_state) {
 
   // Give some information on the setting up process.
   // Might need to add code to prevent or warn user if they decide to change it
 
-  $output['title'] = array(
-      '#markup' => t('Film link set up'),
-      '#weight' => 1,
-      '#prefix' => '<h1>',
-      '#suffix' => '</h1>',        
-    );
-
-  $output['description'] = array(
-      '#markup' => 'Film set up options.',
-  
-  );
-  
-  $film_links_setting_form = drupal_get_form('film_links_setting_form');
-
-  $output['form'] = array(
-      '#type' => 'item',
-      '#markup' => drupal_render($film_links_setting_form),
-      '#weight' => 5,
-  );
-
-  return $output;
-}
-
-
-/*
- *
- */
-//function film_links_role_settings() {
-//
-//  // Give some information on the setting up process.
-//  // Might need to add code to prevent or warn user if they decide to change it
-//  $message  = '<h1>Roles</h1> ';
-//  //$message .= 'Please select the default status for the site.<br>';
-//
 //  $output['title'] = array(
-//        '#markup' => t('Roles2'),
-//        //'#weight' => 1,
-//        '#prefix' => '<h1>',
-//        '#suffix' => '</h1>',
-//      );
+//      '#markup' => t('Film link set up'),
+//      '#weight' => 1,
+//      '#prefix' => '<h1>',
+//      '#suffix' => '</h1>',        
+//    );
 //
-//  $output['form'] = array(
-//      '#type' => 'item',
-//      '#markup' => l(t('Add role'),'admin/config/film_links/settings/roles/add'),
-//     // '#weight' => -100,
-//  );
-//
-//
-//  $output['roles'] = _film_links_get_roles_table();
-//  return $output;
-//}
-
-
-/*
- *
- */
-function film_links_role_add($form,$form_state) {
-
-  // Give some information on the setting up process.
-  // Might need to add code to prevent or warn user if they decide to change it
-  $form['title'] = array(
-        '#markup' => t('Roles'),
-        //'#weight' => 1,
-        '#prefix' => '<h1>',
-        '#suffix' => '</h1>',
-      );
-
-  $form['description'] = array(
-    '#markup' => t("Enter the name of the role to be added. If a role already exists you won't be allowed to add it"),
-  );
-    
-  $form['field_role_name'] = array(
-    '#type' => 'textfield', 
-    '#title' => t('Role'),  
-    '#size' => 60, 
-    '#maxlength' => 128, 
-    '#required' => TRUE,
-  );
-  
-  $form['field_character'] = array(
-    '#type' => 'checkbox', 
-    '#title' => t('Show character'), 
-  );  
-  
-  $form['action']['submit'] = array(
-    '#type' => 'submit',
-    '#value' => t('Add'),
-  );
-    
-  $form['roles'] = _film_links_get_roles_table();
-  return $form;
-}
-
-
-function _film_links_get_roles_table() {
-  $header = array(
-    array('data' => t('Role'), 'field' => 'role'),
-    array('data' => t('Character'), 'field' => 'character'),
-    array('data' => 'Main item ','field'=>'operations2'),  
-    array('data' => 'group items','field'=>'operations3'),        
-    array('data' => ' ','field'=>'operations'),
-  );
-  
-  $destination = drupal_get_destination();
-
-  $result = _film_links_get_roles(NULL);
-
-  $rows = array();
-  foreach($result as $row) {
-    $operation = array();
-    
-    if ($row->film_character == 1) {
-      $character = '<img src="/'.drupal_get_path('module','film_links'). '/image/tick.png" style="width:15px; height:15px;">';
-      
-    } else {
-      $character = '';
-    }
-
-    // Get number of sub roles
-//    $sub_role_count = _film_links_get_subrole_count($row->rid);
-    
-//    if ($sub_role_count > 0) {
-//      $sub_role_count = ' (' . $sub_role_count . ')';
-//    } else {
-//      $sub_role_count = ' (-)';
-//    }
-    $rows[$row->rid]['name'] = l($row->name,'admin/config/film_links/settings/subroles/' . $row->rid);
-    $rows[$row->rid]['character'] = $character;
-    
-    $rows[$row->rid]['operation2'] = array(
-      'data' => array(
-          '#type' => 'radio',
-          '#default_value' => $row->rid,
-          '#attributes' => array('name' => 'test'),
-      ),
-    );
-    
-    
-    $rows[$row->rid]['operation3'] = array(
-      'data' => array(
-          '#type' => 'checkbox',
-          '#default_value' => $row->rid,
-      ),
-    );    
-    
-    
-    $operation['edit'] = array(
-      'title' => t('edit'),
-        'href' => 'admin/config/film_links/settings/roles/edit/' . $row->rid,
-    );
-    
-    $operation['delete'] = array(
-      'title' => t('delete'),
-        'href' => 'admin/config/film_links/settings/roles/delete/' . $row->rid,
-    );    
-     $rows[$row->rid]['delete'] = array(
-       'data' => array(
-         '#theme' => 'links__node_operations',
-           '#links' => $operation,
-           '#attributes' => array('class' => array('links','inline')),
-       ),  
-     );
-  }
-  
-  // Create a render array ($build) which will be themed as a table with a
-  // pager.
-  $output['table'] = array(
-    '#theme' => 'table',
-    '#header' => $header,
-    '#rows' => $rows,
-    '#empty' => t('There are no roles.'),
-  );
-  
-  return $output;
-}
-
-/**
- * Form to allow the user to set the global status.
- *
- * @param 
- *
- * @return
- *   Form array.
- */
-function film_links_setting_form($form, &$form_state) {
-
-  $form = array();
-
-//  // Provide the list of options.
-//  $form['setting'] = array(
-//      '#type' => 'select',
-//      '#title' => t('User status'),
-//      '#options' => user_status_get_options(),
-//      '#weight' => 2,      
+//  $output['description'] = array(
+//      '#markup' => 'Film set up options.',
+//  
 //  );
   
-  $form['action'] = array (
-      '#type' => 'container',
-      '#prefix' => '<div id="tab-buttons">',
-      '#suffix' => '</div>',
-      '#weight' => 10,      
+  $buttons = variable_get('film_general_buttons', array(
+    'people_edit_crew' => '',
+    'people_edit_cast' => '',
+    'people_edit_crew_organisation' => '',
+    'film_edit_crew' => '',
+    'film_edit_cast' => '',
+    'organisation_edit' => '',
+    'film_edit_crew_organisation' => '',
+  ));
+
+  $form['film_general_buttons'] = array(
+    '#prefix' => '<a id="buttons"></a>',
+    '#type' => 'fieldset',
+    '#title' => t('Buttons'),
+    '#description' => t('The text sections required for the introductory page of the eligibility form.'),
+    '#collapsible' => TRUE,
+    '#collapsed' => TRUE,
+    '#tree' => TRUE,
+
+    'people_edit_crew' => array(
+      '#type' => 'textfield',
+      '#title' => t('People edit crew'),
+  //    '#description' => t('Enter the text dealing with the research being carried out.'),
+      '#default_value' => !empty($buttons['people_edit_crew'])?$buttons['people_edit_crew']:'',
+    ),
+
+    'people_edit_crew_organisation' => array(
+      '#type' => 'textfield',
+      '#title' => t('People edit for organisation content type'),
+  //    '#description' => t('Enter the text dealing with the research being carried out.'),
+      '#default_value' => !empty($buttons['people_edit_crew_organisation'])?$buttons['people_edit_crew_organisation']:'',
+    ),    
+
+    'people_edit_cast' => array(
+      '#type' => 'textfield',
+      '#title' => t('People edit cast'),
+  //    '#description' => t('Enter the invitation text.'),
+      '#default_value' => !empty($buttons['people_edit_cast'])?$buttons['people_edit_cast']:'',
+    ),
+    
+    'film_edit_crew' => array(
+      '#type' => 'textfield',
+      '#title' => t('Film edit crew'),
+  //    '#description' => t('Enter the text dealing with the research being carried out.'),
+      '#default_value' => !empty($buttons['film_edit_crew'])?$buttons['film_edit_crew']:'',
+    ),
+    
+    'film_edit_crew_organisation' => array(
+      '#type' => 'textfield',
+      '#title' => t('Film edit for organisation content type'),
+  //    '#description' => t('Enter the text dealing with the research being carried out.'),
+      '#default_value' => !empty($buttons['film_edit_crew_organisation'])?$buttons['film_edit_crew_organisation']:'',
+    ),     
+
+    'film_edit_cast' => array(
+      '#type' => 'textfield',
+      '#title' => t('Film edit cast'),
+  //    '#description' => t('Enter the invitation text.'),
+      '#default_value' => !empty($buttons['film_edit_cast'])?$buttons['film_edit_cast']:'',
+    ),    
+    
+    'organisation_edit' => array(
+      '#type' => 'textfield',
+      '#title' => t('Organisation edit'),
+  //    '#description' => t('Enter the invitation text.'),
+      '#default_value' => !empty($buttons['organisation_edit'])?$buttons['organisation_edit']:'',
+    ),   
   );
 
-  // Add the submit button so we can process the response.
-  $form['action']['submit'] = array(
-      '#type' => 'submit',
-      '#value' => t('Save'),
-      '#submit' => array('film_links_setting_submit'),
+  
+  $organisation = variable_get('film_general_organisation', array(
+    'message_film' => '',
+    'message_people' => '',
+    'role_title_film' => '',
+    'role_title_people' => '',
+    'main_title_film' => '',
+    'main_title_people' => '',
+  ));
+
+  $form['film_general_organisation'] = array(
+    '#prefix' => '<a id="buttons"></a>',
+    '#type' => 'fieldset',
+    '#title' => t('Organisation labels'),
+    '#description' => t('.'),
+    '#collapsible' => TRUE,
+    '#collapsed' => TRUE,
+    '#tree' => TRUE,
+
+   'text_film' => array(
+      '#markup' => t('<h2>Film -> Organisation</h2><p>These labels are for the screen when you click on the edit organisation button on the film page'),
+    ),
+
+    'main_title_film' => array(
+      '#type' => 'textfield',
+      '#title' => t('Main title'),
+      '#default_value' => !empty($organisation['main_title_film'])?$organisation['main_title_film']:'',
+    ),
+    
+    'message_film' => array(
+      '#type' => 'textarea',
+      '#title' => t('Top message'),
+      '#default_value' => !empty($organisation['message_film'])?$organisation['message_film']:'',
+    ),
+
+    'organisation_film' => array(
+      '#type' => 'textfield',
+      '#title' => t('Label for organisation autocomplete'),
+      '#default_value' => !empty($organisation['organisation_film'])?$organisation['organisation_film']:'',
+    ),
+
+    'role_title_film' => array(
+      '#type' => 'textfield',
+      '#title' => t('Role label'),
+      '#default_value' => !empty($organisation['role_title_film'])?$organisation['role_title_film']:'',
+    ),  
+    'submit_film' => array(
+      '#type' => 'textfield',
+      '#title' => t('Submit button'),
+      '#default_value' => !empty($organisation['submit_film'])?$organisation['submit_film']:'',
+    ),    
+   'text_people' => array(
+      '#markup' => t('<h2>People -> Organisation</h2>'),
+    ),
+    'main_title_people' => array(
+      '#type' => 'textfield',
+      '#title' => t('Main title for film / people'),
+      '#default_value' => !empty($organisation['main_title_people'])?$organisation['main_title_people']:'',
+    ),
+    'message_people' => array(
+      '#type' => 'textarea',
+      '#title' => t('message film / people'),
+      '#default_value' => !empty($organisation['message_people'])?$organisation['message_people']:'',
       
-  );
+    ),    
 
-  return $form;
-}
-
-
-
-
-/*
- * Update the current role item
- */ 
-function _film_links_role_update($role_id,$name,$character = 0) {
-  $query = db_update('film_link_role');
-  $query->fields(
-      array(
-        'name' => $name,
-        'film_character' => $character,
-      )
-    );
-  $query->condition('rid',$role_id,'=');
-
-  try {
-    $query->execute();
-  } catch (Exception $e) {
-    drupal_set_message(t('An error occurred updating a role item. Check the log files for more information'),'error');
-    watchdog('film_links','Error updating item : ' . $e,NULL,WATCHDOG_ERROR);      
-    return FALSE;
-  }
-  return TRUE;
-}
-
-/*
- * we delete all the roles and the sub roles
- */
-function _film_links_role_delete($role_id) {
-  // First we delete all the sub 
-  // We need to make sure we don't delete everything which is the case if the 
-  // role id is NULL
-  if (!empty($role_id)) {
-    $query = db_delete('film_link_role');
-    $query->condition('pid',$role_id,'=');
-
-    try {
-      $query->execute();
-    } catch (Exception $e) {
-      drupal_set_message(t('An error occurred deleting a role item. Check the log files for more information'),'error');
-      watchdog('film_links','Error deleting item : ' . $e,NULL,WATCHDOG_ERROR);      
-      return FALSE;
-    }
-  }
-  // Now we delete the main roles.
-  $query = db_delete('film_link_role');
-  $query->condition('rid',$role_id,'=');
-
-  try {
-    $query->execute();
-  } catch (Exception $e) {
-    drupal_set_message(t('An error occurred deleting a role item. Check the log files for more information'),'error');
-    watchdog('film_links','Error deleting item : ' . $e,NULL,WATCHDOG_ERROR);      
-    return FALSE;
-  }  
-  return TRUE;
-}
-
-/*
- * Check to see if the role already exists
- * Return TRUE if it does exists
- * Return array of field names and help text
- */
-function _film_links_role_exists($role_name, $parent_id = NULL,$ignore_rid = NULL) {
-  $query = db_select('film_link_role', 'r');
-  $query->condition('r.name',$role_name,'=');
-  if(!empty($parent_id)) {
-    $query->condition('r.pid',$parent_id,'=');
-  } else {
-    $query->isNull('r.pid');    
-  }
-  
-  if (!empty($ignore_rid)) {
-    $query->condition('r.rid',$ignore_rid,'<>');
-  }
-  
-  $query->fields('r',array('rid'));
- 
-  $result = $query->execute();
-  
-  $item_found = FALSE;
-  foreach($result as $row) {
-    $item_found = TRUE;
-  }
-  
-  return $item_found;
-}
-
-
-/*
- * Get a list of roles in the system
- * If the $rid parameter is NULL then we get all the main roles otherwise 
- * we get the sub roles whose parent matches the $rid value.
- */
-function _film_links_get_roles($rid = NULL) {
-  $query = db_select('film_link_role','r');
-  
-  // might not need the following so will need to test it.
-  if (!empty($rid)) {
-    // We are looking for all the sub roles
-    $query->condition('r.pid',$rid,'=');
-  } else {
-    // we are getting all the main roles.
-    $query->isNull('r.pid');    
-  }
-  
-  $query->fields('r', array('rid','pid','name','film_character'));
-  
-  $result = $query->execute();
-
-  return $result;
-}
-
-
-
-/**
- * Process the response from the form submit.
- * 
- * We will store the user's selection in the database.
- *
- * @param 
- * 
- * @return
- *   Form array.
- */
-function film_links_setting_submit($form,&$form_state) {
-/*
-  // Save the global response to the database
-  if (!empty($form_state['values']['setting'])) {
-    $return_value = _user_status_default_insert($form_state['values']['setting']);
-
-    if ($return_value <> NULL) {
-      $status_name = _get_user_status($form_state['values']['setting']);
-      drupal_set_message('Your user status <strong>' . $status_name . '</strong> has been saved');
-    }
-  }
-  */
-}
-
-/**
- * Process the response from the form submit.
- * 
- * We will store the user's selection in the database.
- *
- * @param 
- * 
- * @return
- *   Form array.
- */
-function film_links_role_submit($form,&$form_state) {
-  dpm($form);
-  dpm($form_state);
-/*
-  // Save the global response to the database
-  if (!empty($form_state['values']['setting'])) {
-    $return_value = _user_status_default_insert($form_state['values']['setting']);
-
-    if ($return_value <> NULL) {
-      $status_name = _get_user_status($form_state['values']['setting']);
-      drupal_set_message('Your user status <strong>' . $status_name . '</strong> has been saved');
-    }
-  }
-  */
-}
-
-
-function film_links_role_add_validate($form, &$form_state) {
-  // Check to make sure the role doesn't currently exist
- 
-  if (empty($form_state['values']['field_role_name'])) {
-    form_set_error('field_role_name', t('Please fill in the name of the role.'));
-  } else {
-    // Now check to see if the name already exists
-    $role_name = $form_state['values']['field_role_name'];
-
-    if (_film_links_role_exists($role_name, NULL) == TRUE) {
-      form_set_error('field_role_name', t('The role already exists.'));
-    }
-  }
-}
-
-function film_links_role_add_submit($form,&$form_state) {
-  $role_name = $form_state['values']['field_role_name'];
-  $character = $form_state['values']['field_character'];
-  film_links_role_save($role_name,NULL,$character);
-}
-
-/*
- * $item 
- */
-function film_links_role_edit($form, $form_state, $role_id = NULL) {
-  
-  $role_details = film_links_get_role_details($role_id);
-  $role_name = $role_details['name'];
-  $character = $role_details['film_character'];
-  
-  $form['title'] = array(
-    '#markup' => 'Role Edit',
-    '#prefix' => '<h1>',
-    '#suffix' => '</h1>',      
-  );
-
-  $form['field_role_name'] = array(
-    '#type' => 'textfield', 
-    '#title' => t('Role'),  
-    '#size' => 60, 
-    '#maxlength' => 128, 
-    '#required' => TRUE,
-    '#default_value' => $role_name,
-  );
-  
-  $form['field_character'] = array(
-    '#type' => 'checkbox', 
-    '#title' => t('Show character'),  
-    '#default_value' => $character,
+    'organisation_people' => array(
+      '#type' => 'textfield',
+      '#title' => t('Label for organisation autocomplete'),
+      '#default_value' => !empty($organisation['organisation_people'])?$organisation['organisation_people']:'',
+    ),
+    'role_title_people' => array(
+      '#type' => 'textfield',
+      '#title' => t('Role label'),
+      '#default_value' => !empty($organisation['role_title_people'])?$organisation['role_title_people']:'',
+    ), 
+    'submit_people' => array(
+      '#type' => 'textfield',
+      '#title' => t('Submit button'),
+      '#default_value' => !empty($organisation['submit_people'])?$organisation['submit_people']:'',
+    ),        
   );  
-  
-  $form['rid'] = array(
-    '#type' => 'hidden',
-    '#value' => $role_details['rid'],
-  );
-  
-  $form['pid'] = array(
-    '#type' => 'hidden',
-    '#value' => $role_details['pid'],
-  );
+
+ //----------------------------------------------------------------------------- 
+  $people = variable_get('film_general_people', array(
+    'message_film' => '',
+    'message_people' => '',
+    'role_title_film' => '',
+    'role_title_people' => '',
+    'main_title_film' => '',
+    'main_title_people' => '',
+  ));
+
+  $form['film_general_people'] = array(
+    '#prefix' => '<a id="buttons"></a>',
+    '#type' => 'fieldset',
+    '#title' => t('People labels'),
+    '#collapsible' => TRUE,
+    '#collapsed' => TRUE,
+    '#tree' => TRUE,
+
+   'text_film_Cast' => array(
+      '#markup' => t('<h2>Film -> People (cast)</h2><p>These labels are for teh screen when you click on the edit people button on the film page</p>'),
+    ),
+
+    'main_title_film_cast' => array(
+      '#type' => 'textfield',
+      '#title' => t('Main title'),
+      '#default_value' => !empty($people['main_title_film_cast'])?$people['main_title_film_cast']:'',
+    ),
     
-  $form['action']['submit'] = array(
-    '#type' => 'submit',
-    '#value' => t('Save'),
-  );
-  
-  return $form;
-}
+    'message_film_cast' => array(
+      '#type' => 'textarea',
+      '#title' => t('Top message'),
+      '#default_value' => !empty($people['message_film_cast'])?$people['message_film_cast']:'',
+    ),
 
+    'person_film_cast' => array(
+      '#type' => 'textfield',
+      '#title' => t('Label for person autocomplete'),
+      '#default_value' => !empty($people['person_film_cast'])?$people['person_film_cast']:'',
+    ),
 
-
-function film_links_role_edit_validate($form, &$form_state) {
-  $role_name = $form_state['values']['field_role_name'];
-  $parent_id = $form_state['values']['pid'];
-  $role_id = $form_state['values']['rid'];
-
-  if (_film_links_role_exists($role_name, $parent_id,$role_id) == TRUE) {
-      form_set_error('field_role_name', t('The role already exists.'));  
-  }  
-}
-
-
-function film_links_role_edit_submit($form, &$form_state) {
-  $role_id = $form_state['values']['rid'];
-  $name = $form_state['values']['field_role_name'];
-  $character = $form_state['values']['field_character'];
-  
-  if (_film_links_role_update($role_id,$name,$character) == TRUE) {
-    drupal_set_message('Role ' . $name . ' has been successfully changed on the system.');
-  }
-  $form_state['redirect'] = 'admin/config/film_links/settings/roles';
-}
-
-function film_links_role_delete($form, $form_state, $role_id = NULL) {
-  
-  $role_details = film_links_get_role_details($role_id);
-  $role_name = $role_details['name'];
-  
-  $form['title'] = array(
-    '#markup' => 'Role Delete',
-    '#prefix' => '<h1>',
-    '#suffix' => '</h1>',      
-  );
-
-  $form['description'] = array(
-    '#markup' => '<p>Removing a role will remove all items associated with it. This operation cannot be undone once complete.</p>',
-  );
-  
-  $form['field_role_name'] = array(
-    '#markup' => '<p>Are you sure you want to delete the role <strong>' . $role_name . '</strong>?</p>',
-  );
-  
-  $form['name'] = array(
-    '#type' => 'hidden',
-    '#value' => $role_details['name'],
-  );
+    'character_film_cast' => array(
+      '#type' => 'textfield',
+      '#title' => t('Character label'),
+      '#default_value' => !empty($people['character_film_cast'])?$people['character_film_cast']:'',
+    ),  
+    'submit_film_cast' => array(
+      '#type' => 'textfield',
+      '#title' => t('Submit button'),
+      '#default_value' => !empty($people['submit_film_cast'])?$people['submit_film_cast']:'',
+    ),    
     
-  $form['rid'] = array(
-    '#type' => 'hidden',
-    '#value' => $role_details['rid'],
-  );
+   'text_film_crew' => array(
+      '#markup' => t('<h2>Film -> People (crew)</h2><p>These labels are for teh screen when you click on the edit people button on the film page</p>'),
+    ),
 
-  $form['pid'] = array(
-    '#type' => 'hidden',
-    '#value' => $role_details['pid'],
-  );
+    'main_title_film_crew' => array(
+      '#type' => 'textfield',
+      '#title' => t('Main title'),
+      '#default_value' => !empty($people['main_title_film_crew'])?$people['main_title_film_crew']:'',
+    ),
     
-  $form['action']['submit'] = array(
-    '#type' => 'submit',
-    '#value' => t('Delete'),
-  );    
-  
-  return $form;
-}
+    'message_film_crew' => array(
+      '#type' => 'textarea',
+      '#title' => t('Top message'),
+      '#default_value' => !empty($people['message_film_crew'])?$people['message_film_crew']:'',
+    ),
 
-function film_links_role_delete_submit($form, &$form_state) {
+    'person_film_crew' => array(
+      '#type' => 'textfield',
+      '#title' => t('Label for person autocomplete'),
+      '#default_value' => !empty($people['person_film_crew'])?$people['person_film_crew']:'',
+    ),
 
-  $role_id = $form_state['values']['rid'];
-  $role_name = $form_state['values']['name'];
-
-  if (_film_links_role_delete($role_id) == TRUE) {
-    drupal_set_message('Role ' . $role_name . ' has been successfully removed from the system.');
-  }
-  $form_state['redirect'] = 'admin/config/film_links/settings/roles';
-}
-
-/******************************************************************************/
-
-/*
- * Following section deals with sub roles. Might be worth putting into a 
- * separate file.
- */
-
-/******************************************************************************/
-
-/*
- * Display a list of sub roles for the role ID provided.
- * A new sub role can be added to the main role.
- */
-function film_links_sub_roles($form, $form_state, $role_id = NULL) {
-  
-  $role_details = film_links_get_role_details($role_id);
-  $role_name = $role_details['name'];
-  $rid = $role_details['rid'];
-  
-  $form['title'] = array(
-    '#markup' => 'Sub Roles for role ' . $role_name,
-    '#prefix' => '<h1>',
-    '#suffix' => '</h1>',      
-  );
-
-  $form['go_back'] = array(
-    '#markup' => l('Go back to roles',  'admin/config/film_links/settings/roles'),    
-    '#prefix' => '<p>',
-    '#suffix' => '</p>', 
-  );
-  
-  $form['field_role_name'] = array(
-    '#type' => 'textfield', 
-    '#title' => t('New role'),  
-    '#size' => 60, 
-    '#maxlength' => 128, 
-    '#required' => TRUE,
-  );
-  
-  $form['rid'] = array(
-    '#type' => 'hidden',
-    '#value' => $rid,
-  );
-  
-  // The parent id (PID) should be NULL
-  $form['pid'] = array(
-    '#type' => 'hidden',
-    '#value' => $role_details['pid'],
-  );
+    'role_title_film_crew' => array(
+      '#type' => 'textfield',
+      '#title' => t('Role label'),
+      '#default_value' => !empty($people['role_title_film_crew'])?$people['role_title_film_crew']:'',
+    ),  
+    'submit_film_crew' => array(
+      '#type' => 'textfield',
+      '#title' => t('Submit button'),
+      '#default_value' => !empty($people['submit_film_crew'])?$people['submit_film_crew']:'',
+    ),
     
-  $form['action']['submit'] = array(
-    '#type' => 'submit',
-    '#value' => t('Add'),
-  );
-  
-  $form['sub_roles'] = _film_links_get_sub_roles_table($rid);
-  
-  return $form;
-}
+   'text_people' => array(
+      '#markup' => t('<h2>Organisation -> People</h2><p>These labels are for teh screen when you click on the edit people button on the organisation page'),
+    ),
+    'main_title_organisation' => array(
+      '#type' => 'textfield',
+      '#title' => t('Main title for film / people'),
+      '#default_value' => !empty($people['main_title_organisation'])?$people['main_title_organisation']:'',
+    ),
+    'message_organisation' => array(
+      '#type' => 'textarea',
+      '#title' => t('message film / people'),
+      '#default_value' => !empty($people['message_organisation'])?$people['message_organisation']:'',
+      
+    ),    
 
-function film_links_sub_roles_validate($form, &$form_state) {
-  // Check to make sure the role doesn't currently exist
-  if (empty($form_state['values']['field_role_name'])) {
-    form_set_error('field_role_name', t('Please fill in the name of the role.'));
-  } else {
-    // Now check to see if the name already exists
-    $role_name = $form_state['values']['field_role_name'];
-    $parent_id = $form_state['values']['rid'];
-    if (_film_links_role_exists($role_name, $parent_id) == TRUE) {
-      form_set_error('field_role_name', t('The role already exists.'));
-    }
-  }
-}
+    'person_organisation' => array(
+      '#type' => 'textfield',
+      '#title' => t('Label for person autocomplete'),
+      '#default_value' => !empty($people['person_organisation'])?$people['person_organisation']:'',
+    ),
+    'role_title_people' => array(
+      '#type' => 'textfield',
+      '#title' => t('Role label'),
+      '#default_value' => !empty($people['role_title_people'])?$people['role_title_people']:'',
+    ), 
+    'submit_organisation' => array(
+      '#type' => 'textfield',
+      '#title' => t('Submit button'),
+      '#default_value' => !empty($people['submit_organisation'])?$people['submit_organisation']:'',
+    ),        
+  );   
 
-function film_links_sub_roles_submit($form,&$form_state) {
-  $role_name = $form_state['values']['field_role_name'];
-  $parent_id = $form_state['values']['rid'];
-  film_links_role_save($role_name,$parent_id);
-}
+ //----------------------------------------------------------------------------- 
+  $film = variable_get('film_general_film', array(
+    'message_film' => '',
+    'message_people' => '',
+    'role_title_film' => '',
+    'role_title_people' => '',
+    'main_title_film' => '',
+    'main_title_people' => '',
+  ));
 
-function _film_links_get_sub_roles_table($rid = NULL) {
-  $header = array(
-    array('data' => t('Role')),
-    array('data' => ' ','field'=>'edit'),
-    array('data' => ' ','field'=>'delete'),
-  );
+  $form['film_general_film'] = array(
+    '#prefix' => '<a id="buttons"></a>',
+    '#type' => 'fieldset',
+    '#title' => t('Film labels'),
+    '#collapsible' => TRUE,
+    '#collapsed' => TRUE,
+    '#tree' => TRUE,
+
+   'text_film_Cast' => array(
+      '#markup' => t('<h2>People -> Film (cast)</h2><p>These labels are for teh screen when you click on the edit people button on the film page</p>'),
+    ),
+
+    'main_title_film_cast' => array(
+      '#type' => 'textfield',
+      '#title' => t('Main title'),
+      '#default_value' => !empty($film['main_title_film_cast'])?$film['main_title_film_cast']:'',
+    ),
     
-  $result = _film_links_get_roles($rid);
-  $rows = array();
-  
-  foreach($result as $row) {
-    $row_array = array();
-    $row_array['name'] = $row->name;
-    $row_array['edit'] = l('Edit','admin/config/film_links/settings/subroles/edit/' . $row->rid);
-    $row_array['delete'] = l('Delete','admin/config/film_links/settings/subroles/delete/' . $row->rid);
-    $rows[] = $row_array;
-  }
-  
-  // Create a render array ($build) which will be themed as a table with a
-  // pager.
-  $output['table'] = array(
-    '#theme' => 'table',
-    '#header' => $header,
-    '#rows' => $rows,
-    '#empty' => t('There are no roles.'),
-  );
-  
-  return $output;
-}
+    'message_film_cast' => array(
+      '#type' => 'textarea',
+      '#title' => t('Top message'),
+      '#default_value' => !empty($film['message_film_cast'])?$film['message_film_cast']:'',
+    ),
 
-/*
- * $item 
- */
-function film_links_sub_role_edit($form, $form_state, $role_id = NULL) {
-  dpm($role_id);
-  
-  $role_details = film_links_get_role_details($role_id);
-  dpm($role_details);
-  $role_name = $role_details['name'];
-  
-  $form['title'] = array(
-    '#markup' => 'Role Edit',
-    '#prefix' => '<h1>',
-    '#suffix' => '</h1>',      
-  );
+    'film_film_cast' => array(
+      '#type' => 'textfield',
+      '#title' => t('Label for film autocomplete'),
+      '#default_value' => !empty($film['film_film_cast'])?$film['film_film_cast']:'',
+    ),
 
-  $form['field_role_name'] = array(
-    '#type' => 'textfield', 
-    '#title' => t('Role'),  
-    '#size' => 60, 
-    '#maxlength' => 128, 
-    '#required' => TRUE,
-    '#default_value' => $role_name,
-  );
-  
-  $form['rid'] = array(
-    '#type' => 'hidden',
-    '#value' => $role_details['rid'],
-  );
-  
-  $form['pid'] = array(
-    '#type' => 'hidden',
-    '#value' => $role_details['pid'],
-  );
+    'character_film_cast' => array(
+      '#type' => 'textfield',
+      '#title' => t('Character label'),
+      '#default_value' => !empty($film['character_film_cast'])?$film['character_film_cast']:'',
+    ),  
+    'submit_film_cast' => array(
+      '#type' => 'textfield',
+      '#title' => t('Submit button'),
+      '#default_value' => !empty($film['submit_film_cast'])?$film['submit_film_cast']:'',
+    ),    
     
-  $form['action']['submit'] = array(
-    '#type' => 'submit',
-    '#value' => t('Save'),
-  );
-  return $form;
-}
+   'text_film_crew' => array(
+      '#markup' => t('<h2>People -> Film (crew)</h2><p>These labels are for teh screen when you click on the edit people button on the film page</p>'),
+    ),
 
-
-/*
- * Check to make sure the name of the role doesn't already exist
- */
-function film_links_sub_role_edit_validate($form, &$form_state) {
-  $role_name = $form_state['values']['field_role_name'];
-  $parent_id = $form_state['values']['pid'];
-
-  if (_film_links_role_exists($role_name, $parent_id) == TRUE) {
-      form_set_error('field_role_name', t('The role already exists.'));  
-  }  
-}
-
-
-function film_links_sub_role_edit_submit($form, &$form_state) {
- // dpm($form_state);
-  $role_id = $form_state['values']['rid'];
-  $parent_id = $form_state['values']['pid'];
-  $name = $form_state['values']['field_role_name'];
-  if (_film_links_role_update($role_id,$name) == TRUE) {
-    drupal_set_message('Role ' . $name . ' has been successfully changed on the system.');
-  }
-  $form_state['redirect'] = 'admin/config/film_links/settings/subroles/' . $parent_id;  
-}
-
-
-function film_links_sub_role_delete($form, $form_state, $role_id = NULL) {
-  
-  $role_details = film_links_get_role_details($role_id);
-  $role_name = $role_details['name'];
-  
-  $form['title'] = array(
-    '#markup' => 'Role Delete',
-    '#prefix' => '<h1>',
-    '#suffix' => '</h1>',      
-  );
-
-  $form['description'] = array(
-    '#markup' => '<p>Removing a role will remove all items associated with it. This operation cannot be undone once complete.</p>',
-  );
-  
-  $form['field_role_name'] = array(
-    '#markup' => '<p>Are you sure you want to delete the role <strong>' . $role_name . '</strong>?</p>',
-  );
-  
-  $form['name'] = array(
-    '#type' => 'hidden',
-    '#value' => $role_details['name'],
-  );
+    'main_title_film_crew' => array(
+      '#type' => 'textfield',
+      '#title' => t('Main title'),
+      '#default_value' => !empty($film['main_title_film_crew'])?$film['main_title_film_crew']:'',
+    ),
     
-  $form['rid'] = array(
-    '#type' => 'hidden',
-    '#value' => $role_details['rid'],
-  );
+    'message_film_crew' => array(
+      '#type' => 'textarea',
+      '#title' => t('Top message'),
+      '#default_value' => !empty($film['message_film_crew'])?$film['message_film_crew']:'',
+    ),
 
-  $form['pid'] = array(
-    '#type' => 'hidden',
-    '#value' => $role_details['pid'],
-  );
+    'film_film_crew' => array(
+      '#type' => 'textfield',
+      '#title' => t('Label for film autocomplete'),
+      '#default_value' => !empty($film['film_film_crew'])?$film['film_film_crew']:'',
+    ),
+
+    'role_title_film_crew' => array(
+      '#type' => 'textfield',
+      '#title' => t('Role label'),
+      '#default_value' => !empty($film['role_title_film_crew'])?$film['role_title_film_crew']:'',
+    ),  
+    'submit_film_crew' => array(
+      '#type' => 'textfield',
+      '#title' => t('Submit button'),
+      '#default_value' => !empty($film['submit_film_crew'])?$film['submit_film_crew']:'',
+    ),
     
-  $form['action']['submit'] = array(
-    '#type' => 'submit',
-    '#value' => t('Delete'),
-  );    
-  
-  return $form;
+   'text_people' => array(
+      '#markup' => t('<h2>Organisation -> film</h2><p>These labels are for teh screen when you click on the edit people button on the organisation page'),
+    ),
+    'main_title_organisation' => array(
+      '#type' => 'textfield',
+      '#title' => t('Main title for film / people'),
+      '#default_value' => !empty($film['main_title_organisation'])?$film['main_title_organisation']:'',
+    ),
+    'message_organisation' => array(
+      '#type' => 'textarea',
+      '#title' => t('message film / people'),
+      '#default_value' => !empty($film['message_organisation'])?$film['message_organisation']:'',
+      
+    ),    
+
+    'film_organisation' => array(
+      '#type' => 'textfield',
+      '#title' => t('Label for film autocomplete'),
+      '#default_value' => !empty($film['film_organisation'])?$film['film_organisation']:'',
+    ),
+    'role_title_film' => array(
+      '#type' => 'textfield',
+      '#title' => t('Role label'),
+      '#default_value' => !empty($film['role_title_film'])?$film['role_title_film']:'',
+    ), 
+    'submit_organisation' => array(
+      '#type' => 'textfield',
+      '#title' => t('Submit button'),
+      '#default_value' => !empty($film['submit_organisation'])?$film['submit_organisation']:'',
+    ),        
+  );  
+  return system_settings_form($form);
 }
 
-function film_links_sub_role_delete_submit($form, &$form_state) {
-  $role_id = $form_state['values']['rid'];
-  $role_name = $form_state['values']['name'];
-  $parent_id = $form_state['values']['pid'];
-  if (_film_links_role_delete($role_id) == TRUE) {
-    drupal_set_message('Role ' . $role_name . ' has been successfully removed from the system.');
-  }
-  $form_state['redirect'] = 'admin/config/film_links/settings/subroles/' . $parent_id;
-}
-
-/*
- * Get the number of sub roles for the specified role.
- *
- * $rid - The id of the parent role.
- */
-//function _film_links_get_subrole_count($rid) {
-//// Got the following code from : https://drupal.org/node/1251174
-//  $query = db_select('film_link_role','r');
-//  $query->condition('r.pid',$rid,'=');
-//  $number_of_rows = $query->countQuery()->execute()->fetchField();
-//
-//  return $number_of_rows;
-//}
